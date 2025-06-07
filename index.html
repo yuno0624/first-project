@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ネタ帳メーカー（メモ帳版）</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #ideaInput { width: 100%; height: 120px; }
+    .idea-block { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+    .questions { margin-top: 5px; padding-left: 20px; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>ネタ帳メーカー（メモ帳版）</h1>
+  <textarea id="ideaInput" placeholder="アイデアを入力してください"></textarea>
+  <div class="buttons">
+    <button id="saveIdea">記録</button>
+    <button id="download">保存（JSON）</button>
+  </div>
+  <div id="notes"></div>
+
+  <script>
+    let notes = [];
+    const defaultPrompts = [
+      "理由は？",
+      "他に選択肢は？",
+      "根拠となるデータは？",
+      "逆の立場なら？"
+    ];
+
+    function genQuestions(sentence) {
+      const stems = [
+        ["理由は？", /から$/],
+        ["根拠となるデータは？", /(はず|と思う)$/],
+        ["逆の立場なら？", /(always|絶対)/],
+        ["他に選択肢は？", /(only|唯一)/]
+      ];
+      const qs = stems.filter(([_, r]) => r.test(sentence)).map(([q]) => q);
+      if (qs.length === 0) {
+        qs.push(defaultPrompts[Math.floor(Math.random() * defaultPrompts.length)]);
+      }
+      return qs;
+    }
+
+    function addIdea() {
+      const area = document.getElementById('ideaInput');
+      const text = area.value.trim();
+      if (!text) return;
+      const questions = genQuestions(text);
+      notes.push({ text, questions });
+      localStorage.setItem('notes', JSON.stringify(notes));
+      area.value = '';
+      renderNotes();
+    }
+
+    function renderNotes() {
+      const container = document.getElementById('notes');
+      container.innerHTML = '';
+      notes.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'idea-block';
+
+        const p = document.createElement('p');
+        p.textContent = item.text;
+        div.appendChild(p);
+
+        const ul = document.createElement('ul');
+        ul.className = 'questions';
+        item.questions.forEach(q => {
+          const li = document.createElement('li');
+          li.textContent = q;
+          ul.appendChild(li);
+        });
+
+        div.appendChild(ul);
+        container.appendChild(div);
+      });
+    }
+
+    function loadNotes() {
+      const data = localStorage.getItem('notes');
+      if (data) {
+        notes = JSON.parse(data);
+        renderNotes();
+      }
+    }
+
+    function downloadJSON() {
+      const data = JSON.stringify(notes, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'notes.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('saveIdea').addEventListener('click', addIdea);
+    document.getElementById('download').addEventListener('click', downloadJSON);
+    window.addEventListener('load', loadNotes);
+  </script>
+</body>
+</html>
